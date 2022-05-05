@@ -1,5 +1,8 @@
 name: Send Garbage Collection notifications
 on:
+  push:
+    branches:
+      - "main"
   workflow_dispatch:
   schedule:
     # Run every day at 17:00 UTC (19:00 CET)

@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   schedule:
     # Run every day at 18:00 UTC (20:00 CET)
-    - cron: "20 * * * *"
+    - cron: '0 18 * * *'
 
 jobs:
   send-notification:
@@ -14,14 +14,14 @@ jobs:
     steps:
       - uses: szenius/set-timezone@v1.0
         with:
-          timezoneLinux: "Europe/Berlin"
+          timezoneLinux: 'Europe/Berlin'
       - name: Install Chromium
         run: sudo apt-get install chromium-browser
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v3
         with:
-          python-version: "3.10.3"
-          cache: "pip"
+          python-version: '3.10.3'
+          cache: 'pip'
       - name: Install all dependencies
         run: pip install -r requirements.txt
       - name: Send notification

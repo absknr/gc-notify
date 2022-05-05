@@ -1,0 +1,9 @@
+{
+    "awg_url": "https://wastemanagement.awg.de/WasteManagementDonauwald/WasteManagementServlet",
+    "haus_details": {
+        "ort": "Passau",
+        "strasse": "Schönleitnerweg",
+        "nummer": "4",
+        "nummerzusatz": "A"
+    }
+}

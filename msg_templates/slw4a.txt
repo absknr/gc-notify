@@ -1,0 +1,2 @@
+⚠️ *PICKUP TOMORROW - {tomorrow_date}* ⚠️
+Please keep the *{dustbin_type}* dustbin outside.

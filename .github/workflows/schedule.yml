@@ -1,9 +1,12 @@
 name: Send Garbage Collection notifications
 on:
+  push:
+    branches:
+      - "main"
   workflow_dispatch:
   schedule:
     # Run every day at 18:00 UTC (20:00 CET)
-    - cron: "0 18 * * *"
+    - cron: "5 * * * *"
 
 jobs:
   send-notification:

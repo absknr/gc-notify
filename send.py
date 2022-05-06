@@ -43,7 +43,7 @@ class FindElement:
         return self._wait_until(presence_type((By.XPATH, xpath)))
 
 
-class Dustbin:
+class DustbinColor:
     RESTMUELLTONNE = "black"
     PAPIERTONNE = "blue"
     BIOTONNE = "brown"
@@ -121,7 +121,7 @@ def crawl():
     chrome_options.add_argument("--headless")
 
     driver = webdriver.Chrome(
-        service=Service(chrome_driver_manager), chrome_options=chrome_options
+        service=Service(chrome_driver_manager), options=chrome_options
     )
     find_element = FindElement(driver)
 
@@ -157,48 +157,52 @@ def crawl():
     papier_xpath = "//div[@id='terminepapier']//td[@name='WasteDisposalServicesDialogComponent.DatePapier']"
     bio_xpath = "//div[@id='terminebio']//td[@name='WasteDisposalServicesDialogComponent.DateBio']"
 
-    restmuell_dates = [
+    restmuell_dates = tuple(
         strp_date(extract_date(date_obj))
         for date_obj in find_element.by_xpath(restmuell_xpath, get_all=True)
-    ]
-    papier_dates = [
+    )
+    papier_dates = tuple(
         strp_date(extract_date(date_obj))
         for date_obj in find_element.by_xpath(papier_xpath, get_all=True)
-    ]
-    bio_dates = [
+    )
+    bio_dates = tuple(
         strp_date(extract_date(date_obj))
         for date_obj in find_element.by_xpath(bio_xpath, get_all=True)
-    ]
-
-    latest_restmuell_date, latest_papier_date, latest_bio_date = (
-        restmuell_dates[:1],
-        papier_dates[:1],
-        bio_dates[:1],
     )
 
-    telegram = TelegramBot(
-        bot_token=os.environ["BOT_TOKEN"],
-        chat_id=int(os.environ["SLW4A_CHAT_ID"]),
-        msg_template=get_template(),
+    all_pickup_details = tuple(
+        zip(
+            (restmuell_dates, papier_dates, bio_dates),
+            (
+                DustbinColor.RESTMUELLTONNE,
+                DustbinColor.PAPIERTONNE,
+                DustbinColor.BIOTONNE,
+            ),
+        )
     )
 
-    if latest_restmuell_date and is_tomorrow(latest_restmuell_date[0]):
-        telegram.send_msg(
-            tomorrow_date=date_format(latest_restmuell_date[0]),
-            dustbin_type=Dustbin.RESTMUELLTONNE,
+    all_tomorrow_pickup_details = tuple(
+        (pickup_detail[0][0], pickup_detail[1])
+        for pickup_detail in all_pickup_details
+        if pickup_detail[0] and is_tomorrow(pickup_detail[0][0])
+    )
+
+    if all_tomorrow_pickup_details:
+        print("Pickups scheduled for tomorrow:", all_tomorrow_pickup_details, sep="\n")
+
+        telegram = TelegramBot(
+            bot_token=os.environ["BOT_TOKEN"],
+            chat_id=int(os.environ["SLW4A_CHAT_ID"]),
+            msg_template=get_template(),
         )
 
-    if latest_papier_date and is_tomorrow(latest_papier_date[0]):
-        telegram.send_msg(
-            tomorrow_date=date_format(latest_papier_date[0]),
-            dustbin_type=Dustbin.PAPIERTONNE,
-        )
-
-    if latest_bio_date and is_tomorrow(latest_bio_date[0]):
-        telegram.send_msg(
-            tomorrow_date=date_format(latest_bio_date[0]),
-            dustbin_type=Dustbin.BIOTONNE,
-        )
+        for tomorrow_pickup_detail in all_tomorrow_pickup_details:
+            tomorrow_date, dustbin_color = tomorrow_pickup_detail
+            telegram.send_msg(
+                tomorrow_date=date_format(tomorrow_date), dustbin_color=dustbin_color
+            )
+    else:
+        print("No pickups scheduled for tomorrow.")
 
 
 if __name__ == "__main__":

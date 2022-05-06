@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   schedule:
     # Run every day at 18:00 UTC (20:00 CET)
-    - cron: '0 18 * * *'
+    - cron: '30 14 * * *'
 
 jobs:
   send-notification:

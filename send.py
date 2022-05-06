@@ -180,7 +180,6 @@ def crawl():
             ),
         )
     )
-
     all_tomorrow_pickup_details = tuple(
         (pickup_detail[0][0], pickup_detail[1])
         for pickup_detail in all_pickup_details

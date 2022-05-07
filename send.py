@@ -181,9 +181,9 @@ def crawl():
         )
     )
     all_tomorrow_pickup_details = tuple(
-        (pickup_detail[0][0], pickup_detail[1])
-        for pickup_detail in all_pickup_details
-        if pickup_detail[0] and is_tomorrow(pickup_detail[0][0])
+        (pickup_details[0][0], pickup_details[1])
+        for pickup_details in all_pickup_details
+        if pickup_details[0] and is_tomorrow(pickup_details[0][0])
     )
 
     if all_tomorrow_pickup_details:
@@ -195,8 +195,8 @@ def crawl():
             msg_template=get_template(),
         )
 
-        for tomorrow_pickup_detail in all_tomorrow_pickup_details:
-            tomorrow_date, dustbin_color = tomorrow_pickup_detail
+        for tomorrow_pickup_details in all_tomorrow_pickup_details:
+            tomorrow_date, dustbin_color = tomorrow_pickup_details
             telegram.send_msg(
                 tomorrow_date=date_format(tomorrow_date), dustbin_color=dustbin_color
             )

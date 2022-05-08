@@ -16,7 +16,7 @@ from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.utils import ChromeType
 
-with open("settings.json") as f:
+with open("settings.json", encoding="utf8") as f:
     settings = json.load(f)
 
 
@@ -85,7 +85,7 @@ def is_tomorrow(date):
 
 
 def get_template(name="slw4a"):
-    with open(f"msg_templates/{name}.txt") as f:
+    with open(os.path.join("msg_templates", f"{name}.txt")) as f:
         return f.read()
 
 
@@ -111,9 +111,9 @@ def crawl():
 
     # Init
     chrome_driver_manager = (
-        ChromeDriverManager().install()
-        if platform.system() == "Darwin"
-        else ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install()
+        ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install()
+        if platform.system() == "Linux"
+        else ChromeDriverManager().install()
     )
 
     chrome_options = Options()

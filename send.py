@@ -16,6 +16,8 @@ from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.utils import ChromeType
 
+from firebase import firebase
+
 with open("settings.json", encoding="utf8") as f:
     settings = json.load(f)
 
@@ -87,6 +89,32 @@ def is_tomorrow(date):
 def get_template(name="slw4a"):
     with open(os.path.join("msg_templates", f"{name}.txt")) as f:
         return f.read()
+
+def get_db_ref(db_url):
+    return firebase.FirebaseApplication(db_url,None)
+
+def update_db(db_url,id,db_key_ishisturn,ishisturn):
+    get_db_ref(db_url).put('/{}'.format(id),db_key_ishisturn,ishisturn)
+
+def get_responsible_member():
+    db_details = settings["db_details"]
+    db_url = db_details["db_url"]
+    db_key_ishisturn = db_details["db_key_ishisturn"]
+    deb_key_name = db_details["Name"]
+    is_member_assigned = False
+    reponsible_member
+    members = get_db_ref(db_url).get('/','')
+
+    for key,value in enumerate(members):
+        if is_member_assigned:
+            update_db(db_url,key,db_key_ishisturn,True)
+            break
+
+        if (value is not None) and value[db_key_ishisturn]:
+            update_db(db_url,key,db_key_ishisturn,False)
+            reponsible_member = value[deb_key_name]
+            is_member_assigned = True
+
 
 
 def crawl():
@@ -187,6 +215,7 @@ def crawl():
     )
 
     if all_tomorrow_pickup_details:
+        reponsible_person = get_responsible_member();
         print("Pickups scheduled for tomorrow:", all_tomorrow_pickup_details, sep="\n")
 
         telegram = TelegramBot(
@@ -198,7 +227,7 @@ def crawl():
         for tomorrow_pickup_details in all_tomorrow_pickup_details:
             tomorrow_date, dustbin_color = tomorrow_pickup_details
             telegram.send_msg(
-                tomorrow_date=date_format(tomorrow_date), dustbin_color=dustbin_color
+                tomorrow_date=date_format(tomorrow_date), dustbin_color=dustbin_color,person_name=reponsible_person
             )
     else:
         print("No pickups scheduled for tomorrow.")

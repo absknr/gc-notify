@@ -1,2 +1,3 @@
 ⚠️ *PICKUP TOMORROW - {tomorrow_date}* ⚠️
+⚠️ *Responsible Person - {person_name}* ⚠️
 Please keep the *{dustbin_color}* dustbin outside.

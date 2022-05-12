@@ -9,6 +9,7 @@ jobs:
   send-notification:
     runs-on: ubuntu-latest
     env:
+      DB_URL: ${{ secrets.DB_URL }}
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
       SLW4A_CHAT_ID: ${{ secrets.SLW4A_CHAT_ID }}
     steps:

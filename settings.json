@@ -5,10 +5,5 @@
         "strasse": "Schönleitnerweg",
         "nummer": "4",
         "nummerzusatz": "A"
-    },
-    "db_details":{
-        "db_url": "https://gc-notify-fff27-default-rtdb.firebaseio.com/",
-        "db_key_ishisturn":"Ishisturn",
-        "db_key_name":"Name"
     }
 }

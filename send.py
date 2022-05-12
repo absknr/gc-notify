@@ -87,33 +87,21 @@ def is_tomorrow(date):
 
 
 def get_template(name="slw4a"):
-    with open(os.path.join("msg_templates", f"{name}.txt")) as f:
+    with open(os.path.join("msg_templates", f"{name}.txt"), encoding="utf-8") as f:
         return f.read()
 
 def get_db_ref(db_url):
     return firebase.FirebaseApplication(db_url,None)
 
-def update_db(db_url,id,db_key_ishisturn,ishisturn):
-    get_db_ref(db_url).put('/{}'.format(id),db_key_ishisturn,ishisturn)
-
 def get_responsible_member():
-    db_details = settings["db_details"]
-    db_url = db_details["db_url"]
-    db_key_ishisturn = db_details["db_key_ishisturn"]
-    deb_key_name = db_details["Name"]
-    is_member_assigned = False
-    reponsible_member
-    members = get_db_ref(db_url).get('/','')
+    db_url = os.environ["DB_URL"]
+    members = get_db_ref(db_url).get('/','')["members"]
 
-    for key,value in enumerate(members):
-        if is_member_assigned:
-            update_db(db_url,key,db_key_ishisturn,True)
-            break
-
-        if (value is not None) and value[db_key_ishisturn]:
-            update_db(db_url,key,db_key_ishisturn,False)
-            reponsible_member = value[deb_key_name]
-            is_member_assigned = True
+    responsible_member = members.pop(0)
+    members.append(responsible_member)
+    get_db_ref(db_url).put('/',"members",members)
+    
+    return responsible_member
 
 
 
@@ -215,7 +203,7 @@ def crawl():
     )
 
     if all_tomorrow_pickup_details:
-        reponsible_person = get_responsible_member();
+        reponsible_person = get_responsible_member()
         print("Pickups scheduled for tomorrow:", all_tomorrow_pickup_details, sep="\n")
 
         telegram = TelegramBot(

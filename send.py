@@ -16,7 +16,9 @@ from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.utils import ChromeType
 
-with open("settings.json") as f:
+from firebase import firebase
+
+with open("settings.json", encoding="utf8") as f:
     settings = json.load(f)
 
 
@@ -85,8 +87,22 @@ def is_tomorrow(date):
 
 
 def get_template(name="slw4a"):
-    with open(f"msg_templates/{name}.txt") as f:
+    with open(os.path.join("msg_templates", f"{name}.txt"), encoding="utf-8") as f:
         return f.read()
+
+def get_db_ref(db_url):
+    return firebase.FirebaseApplication(db_url,None)
+
+def get_responsible_member():
+    db_url = os.environ["DB_URL"]
+    members = get_db_ref(db_url).get('/','')["members"]
+
+    responsible_member = members.pop(0)
+    members.append(responsible_member)
+    get_db_ref(db_url).put('/',"members",members)
+    
+    return responsible_member
+
 
 
 def crawl():
@@ -111,9 +127,9 @@ def crawl():
 
     # Init
     chrome_driver_manager = (
-        ChromeDriverManager().install()
-        if platform.system() == "Darwin"
-        else ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install()
+        ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install()
+        if platform.system() == "Linux"
+        else ChromeDriverManager().install()
     )
 
     chrome_options = Options()
@@ -187,6 +203,7 @@ def crawl():
     )
 
     if all_tomorrow_pickup_details:
+        reponsible_person = get_responsible_member()
         print("Pickups scheduled for tomorrow:", all_tomorrow_pickup_details, sep="\n")
 
         telegram = TelegramBot(
@@ -198,7 +215,7 @@ def crawl():
         for tomorrow_pickup_details in all_tomorrow_pickup_details:
             tomorrow_date, dustbin_color = tomorrow_pickup_details
             telegram.send_msg(
-                tomorrow_date=date_format(tomorrow_date), dustbin_color=dustbin_color
+                tomorrow_date=date_format(tomorrow_date), dustbin_color=dustbin_color,person_name=reponsible_person
             )
     else:
         print("No pickups scheduled for tomorrow.")

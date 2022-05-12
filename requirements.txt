@@ -1,3 +1,4 @@
 selenium
 webdriver-manager
 python-telegram-bot
+git+https://github.com/ozgur/python-firebase

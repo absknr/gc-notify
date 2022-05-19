@@ -90,24 +90,26 @@ def get_template(name="slw4a"):
     with open(os.path.join("msg_templates", f"{name}.txt"), encoding="utf-8") as f:
         return f.read()
 
+
 def get_db_ref(db_url):
-    return firebase.FirebaseApplication(db_url,None)
+    return firebase.FirebaseApplication(db_url, None)
+
 
 def get_responsible_member():
     db_url = os.environ["DB_URL"]
-    members = get_db_ref(db_url).get('/','')["members"]
+    members = get_db_ref(db_url).get("/", "")["members"]
 
     responsible_member = members.pop(0)
     members.append(responsible_member)
-    get_db_ref(db_url).put('/',"members",members)
-    
-    return responsible_member
+    get_db_ref(db_url).put("/", "members", members)
 
+    return responsible_member
 
 
 def crawl():
     # Input locations
     form_xpath = "//form[@name='TargetForm']"
+    zeitraum_xpath = f"{form_xpath}//input[@name='Zeitraum']"
     ort_xpath = f"{form_xpath}//select[@name='Ort']"
     strasse_xpath = f"{form_xpath}//select[@name='Strasse']"
     hausnummer_xpath = f"{form_xpath}//input[@name='Hausnummer']"
@@ -144,81 +146,108 @@ def crawl():
     # Extract collection dates
     driver.get(settings["awg_url"])
 
-    # Select ort
-    ort_select = Select(find_element.by_xpath(ort_xpath))
-    ort_select.select_by_value(ort)
+    # Get zeitraum (periods)
+    try:
+        zeitraum_radio_btns = find_element.by_xpath(zeitraum_xpath, get_all=True)
+    except Exception as e:
+        zeitraum_radio_btns = None
 
-    # Select strasse
-    find_element.by_wait_until_presence(strasse_option_xpath)
-    strasse_select = Select(find_element.by_xpath(strasse_xpath))
-    strasse_select.select_by_value(strasse)
+    def submit_form():
+        # Select ort
+        ort_select = Select(find_element.by_xpath(ort_xpath))
+        ort_select.select_by_value(ort)
 
-    # Enter hausnummer
-    hausnummer_input = find_element.by_wait_until_presence(hausnummer_xpath)
-    hausnummer_input.send_keys(nummer)
+        # Select strasse
+        find_element.by_wait_until_presence(strasse_option_xpath)
+        strasse_select = Select(find_element.by_xpath(strasse_xpath))
+        strasse_select.select_by_value(strasse)
 
-    # Enter hausnummerzusatz
-    hausnummerzusatz_input = find_element.by_wait_until_presence(hausnummerzusatz_xpath)
-    hausnummerzusatz_input.send_keys(nummerzusatz)
+        # Enter hausnummer
+        hausnummer_input = find_element.by_wait_until_presence(hausnummer_xpath)
+        hausnummer_input.send_keys(nummer)
 
-    # Submit the form
-    weiter_btn = find_element.by_xpath(weiter_btn_xpath)
-    weiter_btn.click()
-
-    # Wait until output page loads
-    find_element.by_wait_until_presence(restmuell_parent_xpath)
-
-    # Output locations
-    restmuell_xpath = f"{restmuell_parent_xpath}//td[@name='WasteDisposalServicesDialogComponent.DateRM']"
-    papier_xpath = "//div[@id='terminepapier']//td[@name='WasteDisposalServicesDialogComponent.DatePapier']"
-    bio_xpath = "//div[@id='terminebio']//td[@name='WasteDisposalServicesDialogComponent.DateBio']"
-
-    restmuell_dates = tuple(
-        strp_date(extract_date(date_obj))
-        for date_obj in find_element.by_xpath(restmuell_xpath, get_all=True)
-    )
-    papier_dates = tuple(
-        strp_date(extract_date(date_obj))
-        for date_obj in find_element.by_xpath(papier_xpath, get_all=True)
-    )
-    bio_dates = tuple(
-        strp_date(extract_date(date_obj))
-        for date_obj in find_element.by_xpath(bio_xpath, get_all=True)
-    )
-
-    all_pickup_details = tuple(
-        zip(
-            (restmuell_dates, papier_dates, bio_dates),
-            (
-                DustbinColor.RESTMUELLTONNE,
-                DustbinColor.PAPIERTONNE,
-                DustbinColor.BIOTONNE,
-            ),
+        # Enter hausnummerzusatz
+        hausnummerzusatz_input = find_element.by_wait_until_presence(
+            hausnummerzusatz_xpath
         )
-    )
-    all_tomorrow_pickup_details = tuple(
-        (pickup_details[0][0], pickup_details[1])
-        for pickup_details in all_pickup_details
-        if pickup_details[0] and is_tomorrow(pickup_details[0][0])
-    )
+        hausnummerzusatz_input.send_keys(nummerzusatz)
 
-    if all_tomorrow_pickup_details:
-        reponsible_person = get_responsible_member()
-        print("Pickups scheduled for tomorrow:", all_tomorrow_pickup_details, sep="\n")
+        # Submit the form
+        weiter_btn = find_element.by_xpath(weiter_btn_xpath)
+        weiter_btn.click()
 
-        telegram = TelegramBot(
-            bot_token=os.environ["BOT_TOKEN"],
-            chat_id=int(os.environ["SLW4A_CHAT_ID"]),
-            msg_template=get_template(),
+        # Wait until output page loads
+        find_element.by_wait_until_presence(restmuell_parent_xpath)
+
+        # Output locations
+        restmuell_xpath = f"{restmuell_parent_xpath}//td[@name='WasteDisposalServicesDialogComponent.DateRM']"
+        papier_xpath = "//div[@id='terminepapier']//td[@name='WasteDisposalServicesDialogComponent.DatePapier']"
+        bio_xpath = "//div[@id='terminebio']//td[@name='WasteDisposalServicesDialogComponent.DateBio']"
+
+        restmuell_dates = tuple(
+            strp_date(extract_date(date_obj))
+            for date_obj in find_element.by_xpath(restmuell_xpath, get_all=True)
+        )
+        papier_dates = tuple(
+            strp_date(extract_date(date_obj))
+            for date_obj in find_element.by_xpath(papier_xpath, get_all=True)
+        )
+        bio_dates = tuple(
+            strp_date(extract_date(date_obj))
+            for date_obj in find_element.by_xpath(bio_xpath, get_all=True)
         )
 
-        for tomorrow_pickup_details in all_tomorrow_pickup_details:
-            tomorrow_date, dustbin_color = tomorrow_pickup_details
-            telegram.send_msg(
-                tomorrow_date=date_format(tomorrow_date), dustbin_color=dustbin_color,person_name=reponsible_person
+        all_pickup_details = tuple(
+            zip(
+                (restmuell_dates, papier_dates, bio_dates),
+                (
+                    DustbinColor.RESTMUELLTONNE,
+                    DustbinColor.PAPIERTONNE,
+                    DustbinColor.BIOTONNE,
+                ),
             )
+        )
+        all_tomorrow_pickup_details = tuple(
+            (pickup_details[0][0], pickup_details[1])
+            for pickup_details in all_pickup_details
+            if pickup_details[0] and is_tomorrow(pickup_details[0][0])
+        )
+
+        if all_tomorrow_pickup_details:
+            reponsible_person = get_responsible_member()
+            print(
+                "Pickups scheduled for tomorrow:", all_tomorrow_pickup_details, sep="\n"
+            )
+
+            telegram = TelegramBot(
+                bot_token=os.environ["BOT_TOKEN"],
+                chat_id=int(os.environ["SLW4A_CHAT_ID"]),
+                msg_template=get_template(),
+            )
+
+            for tomorrow_pickup_details in all_tomorrow_pickup_details:
+                tomorrow_date, dustbin_color = tomorrow_pickup_details
+                telegram.send_msg(
+                    tomorrow_date=date_format(tomorrow_date),
+                    dustbin_color=dustbin_color,
+                    person_name=reponsible_person,
+                )
+
+            return True
+
+        else:
+            print("No pickups scheduled for tomorrow.")
+
+        return False
+
+    if zeitraum_radio_btns:
+        for zeitraum_radio_btn in zeitraum_radio_btns:
+            zeitraum_radio_btn.click()
+
+            if submit_form():
+                break
     else:
-        print("No pickups scheduled for tomorrow.")
+        submit_form()
 
 
 if __name__ == "__main__":

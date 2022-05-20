@@ -107,26 +107,6 @@ def get_responsible_member():
 
 
 def crawl():
-    # Input locations
-    form_xpath = "//form[@name='TargetForm']"
-    zeitraum_xpath = f"{form_xpath}//input[@name='Zeitraum']"
-    ort_xpath = f"{form_xpath}//select[@name='Ort']"
-    strasse_xpath = f"{form_xpath}//select[@name='Strasse']"
-    hausnummer_xpath = f"{form_xpath}//input[@name='Hausnummer']"
-    hausnummerzusatz_xpath = f"{form_xpath}//input[@name='Hausnummerzusatz']"
-    weiter_btn_xpath = f"{form_xpath}//a[@name='forward']"
-
-    haus_details = settings["haus_details"]
-    ort = haus_details["ort"]
-    strasse = haus_details["strasse"]
-    nummer = haus_details["nummer"]
-    nummerzusatz = haus_details["nummerzusatz"]
-
-    strasse_option_xpath = (
-        f"{form_xpath}//select[@name='Strasse']/option[@value='{strasse}']"
-    )
-    restmuell_parent_xpath = "//div[@id='terminerestmuell']"
-
     # Init
     chrome_driver_manager = (
         ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install()
@@ -143,16 +123,35 @@ def crawl():
     )
     find_element = FindElement(driver)
 
-    # Extract collection dates
-    driver.get(settings["awg_url"])
+    # Read house info
+    haus_details = settings["haus_details"]
+    ort = haus_details["ort"]
+    strasse = haus_details["strasse"]
+    nummer = haus_details["nummer"]
+    nummerzusatz = haus_details["nummerzusatz"]
 
-    # Get zeitraum (periods)
-    try:
-        zeitraum_radio_btns = find_element.by_xpath(zeitraum_xpath, get_all=True)
-    except Exception as e:
-        zeitraum_radio_btns = None
+    # Input locations
+    form_xpath = "//form[@name='TargetForm']"
+    ort_xpath = f"{form_xpath}//select[@name='Ort']"
+    strasse_option_xpath = (
+        f"{form_xpath}//select[@name='Strasse']/option[@value='{strasse}']"
+    )
+    strasse_xpath = f"{form_xpath}//select[@name='Strasse']"
+    hausnummer_xpath = f"{form_xpath}//input[@name='Hausnummer']"
+    hausnummerzusatz_xpath = f"{form_xpath}//input[@name='Hausnummerzusatz']"
+    weiter_btn_xpath = f"{form_xpath}//a[@name='forward']"
 
-    def submit_form():
+    # Output locations
+    restmuell_parent_xpath = "//div[@id='terminerestmuell']"
+
+    zuruck_btn_xpath = f"{form_xpath}//a[@name='back']"
+    zuruck_btn = None
+
+    restmuell_xpath = f"{restmuell_parent_xpath}//td[@name='WasteDisposalServicesDialogComponent.DateRM']"
+    papier_xpath = "//div[@id='terminepapier']//td[@name='WasteDisposalServicesDialogComponent.DatePapier']"
+    bio_xpath = "//div[@id='terminebio']//td[@name='WasteDisposalServicesDialogComponent.DateBio']"
+
+    def is_pickup_tomorrow(log_prefix=""):
         # Select ort
         ort_select = Select(find_element.by_xpath(ort_xpath))
         ort_select.select_by_value(ort)
@@ -164,12 +163,14 @@ def crawl():
 
         # Enter hausnummer
         hausnummer_input = find_element.by_wait_until_presence(hausnummer_xpath)
+        hausnummer_input.clear()
         hausnummer_input.send_keys(nummer)
 
         # Enter hausnummerzusatz
         hausnummerzusatz_input = find_element.by_wait_until_presence(
             hausnummerzusatz_xpath
         )
+        hausnummerzusatz_input.clear()
         hausnummerzusatz_input.send_keys(nummerzusatz)
 
         # Submit the form
@@ -179,10 +180,9 @@ def crawl():
         # Wait until output page loads
         find_element.by_wait_until_presence(restmuell_parent_xpath)
 
-        # Output locations
-        restmuell_xpath = f"{restmuell_parent_xpath}//td[@name='WasteDisposalServicesDialogComponent.DateRM']"
-        papier_xpath = "//div[@id='terminepapier']//td[@name='WasteDisposalServicesDialogComponent.DatePapier']"
-        bio_xpath = "//div[@id='terminebio']//td[@name='WasteDisposalServicesDialogComponent.DateBio']"
+        # Capture back button
+        nonlocal zuruck_btn
+        zuruck_btn = find_element.by_xpath(zuruck_btn_xpath)
 
         restmuell_dates = tuple(
             strp_date(extract_date(date_obj))
@@ -216,7 +216,9 @@ def crawl():
         if all_tomorrow_pickup_details:
             reponsible_person = get_responsible_member()
             print(
-                "Pickups scheduled for tomorrow:", all_tomorrow_pickup_details, sep="\n"
+                f"{log_prefix}Pickups scheduled for tomorrow:",
+                all_tomorrow_pickup_details,
+                sep="\n",
             )
 
             telegram = TelegramBot(
@@ -236,18 +238,41 @@ def crawl():
             return True
 
         else:
-            print("No pickups scheduled for tomorrow.")
+            print(f"{log_prefix}No pickups scheduled for tomorrow.")
 
         return False
 
+    # Open website
+    driver.get(settings["awg_url"])
+
+    # Get zeitraum (periods)
+    zeitraum_xpath = f"{form_xpath}//input[@name='Zeitraum']"
+    try:
+        zeitraum_radio_btns = find_element.by_xpath(zeitraum_xpath, get_all=True)
+    except Exception as e:
+        zeitraum_radio_btns = None
+
     if zeitraum_radio_btns:
-        for zeitraum_radio_btn in zeitraum_radio_btns:
+        for i in range(len(zeitraum_radio_btns)):
+            zeitraum_radio_btn = zeitraum_radio_btns[i]
+
             zeitraum_radio_btn.click()
 
-            if submit_form():
+            zeitraum_radio_btn_val = zeitraum_radio_btn.get_attribute("value")
+            if is_pickup_tomorrow(log_prefix=f"{zeitraum_radio_btn_val}: "):
                 break
+
+            # Go back to the previous screen
+            zuruck_btn.click()
+
+            # Wait until zeitraum (periods) are rendered on the previous screen
+            zeitraum_radio_btns = find_element.by_wait_until_presence(
+                zeitraum_xpath, of_all=True
+            )
     else:
-        submit_form()
+        is_pickup_tomorrow()
+
+    driver.quit()
 
 
 if __name__ == "__main__":

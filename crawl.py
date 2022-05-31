@@ -14,7 +14,6 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 
 from webdriver_manager.chrome import ChromeDriverManager
-from webdriver_manager.utils import ChromeType
 
 from firebase import firebase
 
@@ -108,11 +107,7 @@ def get_responsible_member():
 
 def crawl():
     # Init
-    chrome_driver_manager = (
-        ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install()
-        if platform.system() == "Linux"
-        else ChromeDriverManager().install()
-    )
+    chrome_driver_manager = ChromeDriverManager().install()
 
     chrome_options = Options()
     chrome_options.add_argument("--no-sandbox")

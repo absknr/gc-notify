@@ -16,8 +16,10 @@ jobs:
       - uses: szenius/set-timezone@v1.0
         with:
           timezoneLinux: "Europe/Berlin"
-      - name: Install Chromium
-        run: sudo apt-get install chromium-browser
+      - name: Install Chrome
+        run: |
+          wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          sudo dpkg -i google-chrome-stable_current_amd64.deb
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v3
         with:
@@ -25,5 +27,5 @@ jobs:
           cache: "pip"
       - name: Install all dependencies
         run: pip install -r requirements.txt
-      - name: Send notification
-        run: python send.py
+      - name: Crawl AWG
+        run: python crawl.py
